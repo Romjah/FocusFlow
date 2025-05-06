@@ -139,10 +139,32 @@
       // Update UI
       document.getElementById('blockedSite').textContent = site || 'this website';
       
-      // Check remaining time
-      chrome.runtime.sendMessage({ action: "getRemainingTime" }, (response) => {
-        if (response && response.remainingTime) {
-          updateTimer(response.remainingTime);
+      // Check remaining time from background script
+      chrome.runtime.sendMessage({ action: "getTimerState" }, (response) => {
+        if (response && response.timerState) {
+          updateTimer(response.timerState.timeLeft);
+          
+          // If the timer is running, set up periodic updates
+          if (response.timerState.running) {
+            // Update timer every second
+            const timerInterval = setInterval(() => {
+              chrome.runtime.sendMessage({ action: "getTimerState" }, (response) => {
+                if (response && response.timerState) {
+                  updateTimer(response.timerState.timeLeft);
+                  
+                  // If the timer stopped or is no longer in focus mode, allow access
+                  if (!response.timerState.running || response.timerState.isBreak) {
+                    clearInterval(timerInterval);
+                    if (originalUrl) {
+                      window.location.href = originalUrl;
+                    }
+                  }
+                } else {
+                  clearInterval(timerInterval);
+                }
+              });
+            }, 1000);
+          }
         } else {
           document.getElementById('remainingTime').textContent = "Focus session active";
         }
@@ -177,6 +199,22 @@
         document.getElementById('remainingTime').textContent = 
           `${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
       }
+      
+      // Listen for timer updates from background
+      chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+        if (message.action === 'timerUpdated' && message.timerState) {
+          updateTimer(message.timerState.timeLeft);
+          
+          // If timer is no longer running or is in break mode, redirect to original URL
+          if (!message.timerState.running || message.timerState.isBreak) {
+            if (originalUrl) {
+              window.location.href = originalUrl;
+            }
+          }
+        }
+        sendResponse({ received: true });
+        return true;
+      });
     });
   </script>
 </body>
