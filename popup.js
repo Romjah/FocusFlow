@@ -21,9 +21,6 @@ document.addEventListener('DOMContentLoaded', function() {
   const tabBtns = document.querySelectorAll('.tab-btn');
 
   // State variables
-  let timer = null;
-  let timeLeft = 25 * 60; // 25 minutes in seconds
-  let isRunning = false;
   let isBreak = false;
   let currentSession = 0;
   let tasks = [];
@@ -54,137 +51,91 @@ document.addEventListener('DOMContentLoaded', function() {
   loadData();
 
   // Timer functionality
-  function updateTimerDisplay() {
-    const minutes = Math.floor(timeLeft / 60);
-    const seconds = timeLeft % 60;
-    timerDisplay.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+  function updateTimerDisplay(seconds, isRunning, isTimerBreak) {
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+    timerDisplay.textContent = `${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
+    
+    // Update button states
+    startBtn.disabled = isRunning;
+    pauseBtn.disabled = !isRunning;
+    resetBtn.disabled = !isRunning && seconds === (isTimerBreak ? 
+      (currentSession % settings.sessionsBeforeLongBreak === 0 ? settings.longBreakDuration : settings.breakDuration) * 60 : 
+      settings.focusDuration * 60);
+    
+    // Update timer status
+    if (isTimerBreak) {
+      timerStatus.textContent = currentSession % settings.sessionsBeforeLongBreak === 0 ? 'Long Break' : 'Short Break';
+      document.body.classList.remove('focus-mode');
+      document.body.classList.add('break-mode');
+    } else {
+      timerStatus.textContent = 'Focus Session';
+      document.body.classList.remove('break-mode');
+      document.body.classList.add('focus-mode');
+    }
   }
 
   function startTimer() {
-    if (isRunning) return;
-    
-    isRunning = true;
-    startBtn.disabled = true;
-    pauseBtn.disabled = false;
-    resetBtn.disabled = false;
-    
     chrome.runtime.sendMessage({ 
-      action: "timerStarted", 
+      action: "startTimer", 
       isBreak: isBreak,
-      blockedSites: settings.blockedSites 
-    });
-
-    timer = setInterval(() => {
-      timeLeft--;
-      updateTimerDisplay();
-      
-      if (timeLeft <= 0) {
-        clearInterval(timer);
-        timer = null;
-        isRunning = false;
-        
-        if (isBreak) {
-          // End of break
-          isBreak = false;
-          timeLeft = settings.focusDuration * 60;
-          timerStatus.textContent = 'Focus Session';
-          document.body.classList.remove('break-mode');
-          document.body.classList.add('focus-mode');
-          
-          if (settings.enableNotifications) {
-            chrome.notifications.create({
-              type: 'basic',
-              iconUrl: 'images/icon128.png',
-              title: 'Break Ended',
-              message: 'Time to focus!'
-            });
-          }
-        } else {
-          // End of focus session
-          currentSession++;
-          stats.daily.sessionsCompleted++;
-          stats.daily.focusTime += settings.focusDuration;
-          stats.weekly.sessions[new Date().getDay()]++;
-          stats.weekly.focusTime[new Date().getDay()] += settings.focusDuration;
-          saveStats();
-          
-          isBreak = true;
-          
-          // Determine if it's time for a long break
-          if (currentSession % settings.sessionsBeforeLongBreak === 0) {
-            timeLeft = settings.longBreakDuration * 60;
-            timerStatus.textContent = 'Long Break';
-          } else {
-            timeLeft = settings.breakDuration * 60;
-            timerStatus.textContent = 'Short Break';
-          }
-          
-          document.body.classList.remove('focus-mode');
-          document.body.classList.add('break-mode');
-          
-          if (settings.enableNotifications) {
-            chrome.notifications.create({
-              type: 'basic',
-              iconUrl: 'images/icon128.png',
-              title: 'Focus Session Completed',
-              message: 'Time for a break!'
-            });
-          }
-          
-          // Disable website blocking during break
-          chrome.runtime.sendMessage({ 
-            action: "timerEnded"
-          });
-        }
-        
-        updateTimerDisplay();
-        startBtn.disabled = false;
-        pauseBtn.disabled = true;
-        resetBtn.disabled = false;
+      settings: settings
+    }, (response) => {
+      if (response && response.timerState) {
+        updateTimerDisplay(
+          response.timerState.timeLeft,
+          response.timerState.running,
+          response.timerState.isBreak
+        );
       }
-    }, 1000);
+    });
   }
 
   function pauseTimer() {
-    if (!isRunning) return;
-    
-    clearInterval(timer);
-    timer = null;
-    isRunning = false;
-    startBtn.disabled = false;
-    pauseBtn.disabled = true;
-    
-    // Disable website blocking when paused
     chrome.runtime.sendMessage({ 
-      action: "timerEnded"
+      action: "pauseTimer"
+    }, (response) => {
+      if (response && response.timerState) {
+        updateTimerDisplay(
+          response.timerState.timeLeft,
+          response.timerState.running,
+          response.timerState.isBreak
+        );
+      }
     });
   }
 
   function resetTimer() {
-    clearInterval(timer);
-    timer = null;
-    isRunning = false;
-    
-    if (isBreak) {
-      isBreak = false;
-      timeLeft = settings.focusDuration * 60;
-      timerStatus.textContent = 'Focus Session';
-      document.body.classList.remove('break-mode');
-      document.body.classList.add('focus-mode');
-    } else {
-      timeLeft = settings.focusDuration * 60;
-    }
-    
-    updateTimerDisplay();
-    startBtn.disabled = false;
-    pauseBtn.disabled = true;
-    resetBtn.disabled = true;
-    
-    // Disable website blocking when reset
     chrome.runtime.sendMessage({ 
-      action: "timerEnded"
+      action: "resetTimer",
+      isBreak: isBreak
+    }, (response) => {
+      if (response && response.timerState) {
+        updateTimerDisplay(
+          response.timerState.timeLeft,
+          response.timerState.running,
+          response.timerState.isBreak
+        );
+      }
     });
   }
+
+  // Listen for timer updates from background
+  chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    if (message.action === 'timerUpdated' && message.timerState) {
+      const state = message.timerState;
+      isBreak = state.isBreak;
+      currentSession = state.currentSession;
+      
+      updateTimerDisplay(
+        state.timeLeft,
+        state.running,
+        state.isBreak
+      );
+    }
+    sendResponse({ received: true });
+    return true;
+  });
 
   // Task management
   function renderTasks() {
@@ -305,21 +256,14 @@ document.addEventListener('DOMContentLoaded', function() {
       .filter(site => site.length > 0);
     settings.enableNotifications = enableNotificationsInput.checked;
     
-    // Update current timer if not running
-    if (!isRunning) {
-      if (!isBreak) {
-        timeLeft = settings.focusDuration * 60;
-      } else {
-        if (currentSession % settings.sessionsBeforeLongBreak === 0) {
-          timeLeft = settings.longBreakDuration * 60;
-        } else {
-          timeLeft = settings.breakDuration * 60;
-        }
-      }
-      updateTimerDisplay();
-    }
-    
+    // Save settings to storage
     chrome.storage.sync.set({ settings }, () => {
+      // Update background timer settings
+      chrome.runtime.sendMessage({ 
+        action: "updateSettings", 
+        settings: settings 
+      });
+      
       // Display temporary saved message
       const savedMsg = document.createElement('div');
       savedMsg.className = 'settings-saved';
@@ -393,7 +337,6 @@ document.addEventListener('DOMContentLoaded', function() {
       
       if (data.settings) {
         settings = { ...settings, ...data.settings };
-        timeLeft = settings.focusDuration * 60;
         loadSettings();
       }
       
@@ -404,7 +347,20 @@ document.addEventListener('DOMContentLoaded', function() {
         saveStats(); // Initialize stats
       }
       
-      updateTimerDisplay();
+      // Get current timer state from background
+      chrome.runtime.sendMessage({ action: "getTimerState" }, (response) => {
+        if (response && response.timerState) {
+          const state = response.timerState;
+          isBreak = state.isBreak;
+          currentSession = state.currentSession;
+          
+          updateTimerDisplay(
+            state.timeLeft,
+            state.running,
+            state.isBreak
+          );
+        }
+      });
     });
   }
 
@@ -482,7 +438,4 @@ document.addEventListener('DOMContentLoaded', function() {
       document.getElementById(`${tabName}Stats`).style.display = 'block';
     });
   });
-
-  // Initialize UI state
-  updateTimerDisplay();
 }); 
