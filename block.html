@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Site Blocked - FocusFlow</title>
+  <style>
+    :root {
+      --primary-color: #5b87c7;
+      --primary-dark: #4a70a1;
+      --focus-mode: #eb6a5c;
+      --text-color: #333;
+      --light-text: #666;
+      --bg-color: #f8f9fa;
+    }
+    
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: var(--bg-color);
+      color: var(--text-color);
+      font-size: 16px;
+      line-height: 1.5;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 20px;
+      text-align: center;
+    }
+    
+    .container {
+      max-width: 600px;
+      background-color: white;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+      padding: 40px;
+    }
+    
+    .icon {
+      font-size: 64px;
+      margin-bottom: 20px;
+    }
+    
+    h1 {
+      color: var(--focus-mode);
+      margin-bottom: 20px;
+    }
+    
+    .site-info {
+      font-weight: 600;
+      color: var(--focus-mode);
+    }
+    
+    p {
+      margin-bottom: 20px;
+      color: var(--light-text);
+    }
+    
+    .action-text {
+      margin: 30px 0;
+      font-weight: 500;
+    }
+    
+    .timer {
+      font-size: 28px;
+      font-weight: 700;
+      color: var(--primary-color);
+      margin-bottom: 30px;
+    }
+    
+    .button {
+      display: inline-block;
+      background-color: var(--primary-color);
+      color: white;
+      padding: 10px 20px;
+      border-radius: 4px;
+      text-decoration: none;
+      margin-top: 10px;
+      transition: background-color 0.2s;
+      cursor: pointer;
+      border: none;
+      font-size: 16px;
+    }
+    
+    .button:hover {
+      background-color: var(--primary-dark);
+    }
+    
+    .button.secondary {
+      background-color: transparent;
+      color: var(--primary-color);
+      border: 1px solid var(--primary-color);
+    }
+    
+    .button.secondary:hover {
+      background-color: rgba(91, 135, 199, 0.1);
+    }
+    
+    .footer {
+      margin-top: 30px;
+      font-size: 14px;
+      color: var(--light-text);
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="icon">🚫</div>
+    <h1>Site Blocked</h1>
+    <p>You're trying to access <span id="blockedSite" class="site-info"></span> but it's currently blocked because you're in a focus session.</p>
+    
+    <div class="action-text">Stay focused on your task! You can access this site when your focus session ends.</div>
+    
+    <div class="timer" id="remainingTime">--:--</div>
+    
+    <button id="continueAnywayBtn" class="button secondary">Continue Anyway (5 min)</button>
+    <button id="goBackBtn" class="button">Go Back to Work</button>
+    
+    <div class="footer">
+      <p>Blocked by FocusFlow</p>
+    </div>
+  </div>
+  
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      // Get URL parameters
+      const urlParams = new URLSearchParams(window.location.search);
+      const site = urlParams.get('site');
+      const originalUrl = urlParams.get('url');
+      const sessionId = urlParams.get('session');
+      
+      // Update UI
+      document.getElementById('blockedSite').textContent = site || 'this website';
+      
+      // Check remaining time
+      chrome.runtime.sendMessage({ action: "getRemainingTime" }, (response) => {
+        if (response && response.remainingTime) {
+          updateTimer(response.remainingTime);
+        } else {
+          document.getElementById('remainingTime').textContent = "Focus session active";
+        }
+      });
+      
+      // Go back button
+      document.getElementById('goBackBtn').addEventListener('click', () => {
+        // Go back to the previous page
+        window.history.back();
+      });
+      
+      // Continue anyway button (temporary override)
+      document.getElementById('continueAnywayBtn').addEventListener('click', () => {
+        if (originalUrl) {
+          // Send message to background script to allow this site temporarily
+          chrome.runtime.sendMessage({
+            action: "allowTemporary",
+            site: site,
+            sessionId: sessionId,
+            duration: 5 // 5 minutes
+          }, () => {
+            // Navigate to the original URL
+            window.location.href = originalUrl;
+          });
+        }
+      });
+      
+      // Timer update function
+      function updateTimer(seconds) {
+        const minutes = Math.floor(seconds / 60);
+        const remainingSeconds = seconds % 60;
+        document.getElementById('remainingTime').textContent = 
+          `${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
+      }
+    });
+  </script>
+</body>
+</html> 

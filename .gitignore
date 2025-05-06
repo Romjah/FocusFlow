@@ -1,0 +1,82 @@
+# Système d'exploitation
+.DS_Store
+Thumbs.db
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Desktop.ini
+
+# Éditeurs et IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*.sublime-workspace
+*.sublime-project
+.project
+.settings/
+.classpath
+*.code-workspace
+
+# Dépendances et modules
+node_modules/
+bower_components/
+jspm_packages/
+package-lock.json
+yarn.lock
+
+# Fichiers de compilation et distribution
+/dist/
+/build/
+/packages/
+*.zip
+*.crx
+*.pem
+*.cert
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Environnement
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env.local
+
+# Fichiers temporaires
+temp/
+tmp/
+.tmp/
+*.tmp
+*.bak
+*.swp
+*~
+
+# Dossiers de cache
+.cache/
+.npm/
+.eslintcache
+.stylelintcache
+.fusebox/
+
+# Rapport de tests et couverture
+coverage/
+.nyc_output/
+lib-cov/
+*.lcov
+
+# Fichiers spécifiques à Chrome Extensions
+key.pem
+
+# Autres
+.DS_Store?
+._*
+*.map
+*.d.ts
+.history/ 
