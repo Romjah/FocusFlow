@@ -57,6 +57,7 @@ tmp/
 *.bak
 *.swp
 *~
+temp_icons/
 
 # Dossiers de cache
 .cache/
