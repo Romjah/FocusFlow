@@ -4,6 +4,7 @@
 let isBlocking = false;
 let blockedSites = [];
 let activeSessions = {};
+let temporarilyAllowedSites = new Map(); // Map of temporarily allowed sites and their timeouts
 
 // Timer state
 let timer = {
@@ -43,7 +44,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   } else if (message.action === "allowTemporary") {
     // Temporarily allow a blocked site
-    // Implementation could be added here
+    allowSiteTemporarily(message.site, message.duration || 5);
     sendResponse({ success: true });
   } else if (message.action === "startTimer") {
     startTimer(message.isBreak, message.duration, message.settings);
@@ -81,6 +82,31 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
   return true; // Keep the messaging channel open for async responses
 });
+
+// Function to temporarily allow a blocked site
+function allowSiteTemporarily(site, minutes) {
+  if (!site) return;
+  
+  // Clean up any existing timeout for this site
+  if (temporarilyAllowedSites.has(site)) {
+    clearTimeout(temporarilyAllowedSites.get(site).timeout);
+  }
+  
+  // Create a new timeout and store it
+  const expiryTime = Date.now() + (minutes * 60 * 1000);
+  const timeoutId = setTimeout(() => {
+    temporarilyAllowedSites.delete(site);
+    console.log(`Temporary access expired for ${site}`);
+  }, minutes * 60 * 1000);
+  
+  // Store the timeout and expiry time
+  temporarilyAllowedSites.set(site, {
+    timeout: timeoutId,
+    expiryTime: expiryTime
+  });
+  
+  console.log(`Temporarily allowed ${site} for ${minutes} minutes`);
+}
 
 // Timer functions
 function startTimer(isBreak, duration, settings) {
@@ -381,6 +407,11 @@ chrome.storage.sync.get(['settings'], (data) => {
 // Helper function to check if a site should be blocked
 function shouldBlockSite(hostname) {
   if (!blockedSites || blockedSites.length === 0) return false;
+  
+  // Check if the site is temporarily allowed
+  if (temporarilyAllowedSites.has(hostname)) {
+    return false;
+  }
   
   return blockedSites.some(site => {
     // Convert site pattern to lowercase and trim for comparison
