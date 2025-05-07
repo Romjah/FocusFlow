@@ -78,10 +78,13 @@
         <div class="setting-group">
           <h3>Notifications</h3>
           <div class="setting-item">
-            <label>
-              <input type="checkbox" id="enableNotifications" checked>
-              Enable Notifications
-            </label>
+            <label for="enableNotifications">Enable Notifications</label>
+            <input type="checkbox" id="enableNotifications" checked>
+          </div>
+          <div class="setting-item">
+            <label for="enableOffTrackSync">Sync with OffTrack</label>
+            <input type="checkbox" id="enableOffTrackSync">
+            <div id="offtrackStatus" class="status-indicator"></div>
           </div>
         </div>
         <button id="saveSettingsBtn" class="primary-btn">Save Settings</button>

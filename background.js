@@ -1,10 +1,13 @@
 // Background script for FocusFlow extension
 
+import offtrackIntegration from './offtrack-integration.js';
+
 // Initialize state
 let isBlocking = false;
 let blockedSites = [];
 let activeSessions = {};
 let temporarilyAllowedSites = new Map(); // Map of temporarily allowed sites and their timeouts
+let offtrackSyncEnabled = false;
 
 // Timer state
 let timer = {
@@ -21,7 +24,8 @@ let timer = {
     longBreakDuration: 15,
     sessionsBeforeLongBreak: 4,
     blockedSites: [],
-    enableNotifications: true
+    enableNotifications: true,
+    enableOffTrackSync: false
   }
 };
 
@@ -74,6 +78,35 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       }
     }
     sendResponse({ success: true });
+  } else if (message.action === "toggleOffTrackSync") {
+    try {
+      offtrackSyncEnabled = message.enabled;
+      if (offtrackSyncEnabled) {
+        offtrackIntegration.startConnectionCheck();
+      } else {
+        offtrackIntegration.stopConnectionCheck();
+      }
+      sendResponse({ success: true });
+    } catch (error) {
+      console.error('Erreur toggleOffTrackSync:', error);
+      sendResponse({ success: false, error: error?.message || error });
+    }
+    return true;
+  } else if (message.action === "getOffTrackStatus") {
+    try {
+      offtrackIntegration.checkConnection()
+        .then((connected) => {
+          sendResponse({ connected });
+        })
+        .catch((error) => {
+          console.error('Erreur lors de la vérification OffTrack:', error);
+          sendResponse({ connected: false, error: error?.message || error });
+        });
+    } catch (error) {
+      console.error('Erreur inattendue OffTrack:', error);
+      sendResponse({ connected: false, error: error?.message || error });
+    }
+    return true;
   }
   
   // Always respond to ensure the message channel closes
@@ -204,7 +237,21 @@ function resetTimer(isBreak) {
 function updateTimer() {
   if (!timer.running) return;
   
-  timer.timeLeft--;
+  const now = Date.now();
+  const elapsed = Math.floor((now - timer.startTime) / 1000);
+  timer.timeLeft = Math.max(0, timer.totalTime - elapsed);
+
+  // Sync with OffTrack if enabled
+  if (offtrackSyncEnabled && offtrackIntegration.isConnected) {
+    offtrackIntegration.syncTimerData({
+      isRunning: timer.running,
+      isBreak: timer.isBreak,
+      timeLeft: timer.timeLeft,
+      totalTime: timer.totalTime,
+      currentSession: timer.currentSession
+    });
+  }
+
   updateBadge();
   
   // Notify the popup of time update

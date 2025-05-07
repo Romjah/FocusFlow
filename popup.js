@@ -20,6 +20,10 @@ document.addEventListener('DOMContentLoaded', function() {
   const closeStatsBtn = document.getElementById('closeStatsBtn');
   const tabBtns = document.querySelectorAll('.tab-btn');
 
+  // OffTrack Integration
+  const offtrackSyncToggle = document.getElementById('enableOffTrackSync');
+  const offtrackStatus = document.getElementById('offtrackStatus');
+
   // State variables
   let isBreak = false;
   let currentSession = 0;
@@ -49,6 +53,46 @@ document.addEventListener('DOMContentLoaded', function() {
 
   // Load data from storage
   loadData();
+
+  // Load OffTrack sync setting
+  chrome.storage.sync.get(['enableOffTrackSync'], (result) => {
+    offtrackSyncToggle.checked = result.enableOffTrackSync || false;
+    updateOffTrackStatus();
+  });
+
+  // Handle OffTrack sync toggle
+  offtrackSyncToggle.addEventListener('change', () => {
+    const enabled = offtrackSyncToggle.checked;
+    chrome.storage.sync.set({ enableOffTrackSync: enabled });
+    chrome.runtime.sendMessage({ action: 'toggleOffTrackSync', enabled });
+    updateOffTrackStatus();
+  });
+
+  // Update OffTrack connection status
+  function updateOffTrackStatus() {
+    if (!offtrackSyncToggle.checked) {
+      offtrackStatus.className = 'status-indicator disconnected';
+      offtrackStatus.title = 'OffTrack sync disabled';
+      return;
+    }
+
+    chrome.runtime.sendMessage({ action: 'getOffTrackStatus' }, (response) => {
+      if (response && response.connected) {
+        offtrackStatus.className = 'status-indicator connected';
+        offtrackStatus.title = 'Connected to OffTrack';
+      } else {
+        offtrackStatus.className = 'status-indicator disconnected';
+        offtrackStatus.title = 'Not connected to OffTrack';
+      }
+    });
+  }
+
+  // Update status every 5 seconds if sync is enabled
+  setInterval(() => {
+    if (offtrackSyncToggle.checked) {
+      updateOffTrackStatus();
+    }
+  }, 5000);
 
   // Timer functionality
   function updateTimerDisplay(seconds, isRunning, isTimerBreak) {
