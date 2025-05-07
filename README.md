@@ -12,23 +12,36 @@ FocusFlow is a Chrome extension designed to boost productivity with a Pomodoro t
 
 ## Installation
 
-### Developer Mode Installation
-1. Download or clone this repository
-2. Open Chrome and go to `chrome://extensions/`
-3. Enable "Developer mode" in the top-right corner
-4. Click "Load unpacked" and select the extension directory
-5. The FocusFlow extension will appear in your extensions list
+### Installation en mode développeur
+1. Clonez ce dépôt sur votre ordinateur ou téléchargez-le sous forme de ZIP
+   ```bash
+   git clone https://github.com/your-username/FocusFlow.git
+   ```
+   
+2. Ouvrez Chrome et accédez à la page des extensions
+   - Tapez `chrome://extensions/` dans la barre d'adresse ou
+   - Menu → Plus d'outils → Extensions
 
-### From Chrome Web Store
-*Coming soon*
+3. Activez le "Mode développeur" en basculant l'interrupteur en haut à droite
 
-## Usage
+4. Cliquez sur "Charger l'extension non empaquetée" et sélectionnez le dossier FocusFlow
 
-1. Click on the FocusFlow icon in your browser toolbar to open the popup
-2. Set up your tasks by clicking the "+" button in the Tasks section
-3. Start a focus session by clicking the "Start" button
-4. The timer will count down, and a notification will appear when it's time for a break
-5. Configure your settings by clicking the gear icon
+5. L'extension FocusFlow apparaîtra dans votre liste d'extensions et sera prête à être utilisée
+
+6. Cliquez sur l'icône de l'extension dans la barre d'outils pour commencer à l'utiliser
+
+### Comment utiliser l'extension
+1. Cliquez sur l'icône FocusFlow dans la barre d'outils de Chrome pour ouvrir l'interface
+2. Cliquez sur "Start" pour démarrer une session de concentration (25 minutes par défaut)
+3. Ajoutez des tâches à votre liste en cliquant sur le bouton "+" dans la section Tâches
+4. Les sites distractifs configurés seront bloqués pendant les sessions de concentration
+5. Une notification apparaîtra lorsqu'il sera temps de faire une pause
+6. Consultez vos statistiques de productivité en cliquant sur l'icône 📊
+
+### Désinstallation
+Pour désinstaller l'extension :
+1. Accédez à `chrome://extensions/`
+2. Trouvez FocusFlow dans la liste et cliquez sur "Supprimer"
 
 ## Configuration
 
